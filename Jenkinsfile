@@ -20,7 +20,7 @@ pipeline {
                 sh '''
                     # Update and install necessary packages
                     yum update -y
-                    yum install -y unzip curl tar docker
+                    yum install -y unzip curl tar gzip docker
 
                     # Download and install AWS CLI v2
                     curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
