@@ -3,9 +3,9 @@ pipeline {
 
     environment {
         AWS_ACCOUNT_ID = '436515648470'
-        AWS_REGION = 'eu-east-1' // Default region, change if needed or inject dynamically
+        AWS_REGION = 'eu-east-1'
         IMAGE_TAG = "${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
-        REPO_NAME = ''
+        REPO_NAME = "angular-${env.BRANCH_NAME}"
         ECR_URI = ''
     }
 
@@ -32,11 +32,6 @@ pipeline {
             }
             steps {
                 script {
-                    if (env.BRANCH_NAME == 'test') {
-                        env.REPO_NAME = 'angular-test'
-                    } else if (env.BRANCH_NAME == 'prod') {
-                        env.REPO_NAME = 'angular-prod'
-                    }
                     env.ECR_URI = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com/${env.REPO_NAME}"
                     echo "📦 Target ECR: ${env.ECR_URI}"
                 }
