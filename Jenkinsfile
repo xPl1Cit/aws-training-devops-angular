@@ -23,6 +23,12 @@ pipeline {
             }
         }
 
+        stage('Debug Branch') {
+            steps {
+                echo "Current branch: ${env.BRANCH_NAME}"
+            }
+        }
+
         stage('Set Target ECR') {
             when {
                 anyOf {
