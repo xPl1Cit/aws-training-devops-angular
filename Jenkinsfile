@@ -1,8 +1,8 @@
 pipeline {
     agent {
         docker {
-            image 'amazonlinux:2'
-            args '-u root'
+            image 'docker:24.0.7-cli'
+            args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
 
