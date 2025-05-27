@@ -27,6 +27,11 @@ pipeline {
                     unzip -o awscliv2.zip
                     ./aws/install
 
+                    # Install Docker CLI
+                    curl -LO https://download.docker.com/linux/static/stable/x86_64/docker-24.0.5.tgz
+                    tar -xzf docker-24.0.5.tgz --strip 1 -C /usr/local/bin docker/docker
+                    rm -rf docker-24.0.5.tgz
+
                     # Verify installations
                     aws --version
                     docker --version
