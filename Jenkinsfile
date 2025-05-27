@@ -1,12 +1,12 @@
 pipeline {
     agent any
 
+    parameters {
+        string(name: 'AWS_REGION', defaultValue: 'us-east-1', description: 'AWS Region for ECR')
+    }
+
     environment {
-        AWS_ACCOUNT_ID = '436515648470'
-        AWS_REGION = 'eu-east-1'
-        IMAGE_TAG = "${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
-        REPO_NAME = "angular-${env.BRANCH_NAME}"
-        ECR_URI = ''
+        VERSION = "v${env.BUILD_NUMBER}"
     }
 
     stages {
@@ -16,75 +16,22 @@ pipeline {
             }
         }
 
-        stage('Debug Branch') {
-            steps {
-                echo "Current branch: ${env.BRANCH_NAME}"
-                echo "Using AWS Region: ${env.AWS_REGION}"
-            }
-        }
-
-        stage('Set Target ECR') {
-            when {
-                anyOf {
-                    branch 'test'
-                    branch 'prod'
-                }
-            }
+        stage('Determine Environment') {
             steps {
                 script {
-                    env.ECR_URI = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com/${env.REPO_NAME}"
-                    echo "📦 Target ECR: ${env.ECR_URI}"
+                    def branch = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
+                    env.BRANCH_NAME = branch
+                    env.ENVIRONMENT = (branch == 'prod') ? 'prod' : 'test'
+                    echo "🌱 Branch: ${env.BRANCH_NAME}, deploying to: ${env.ENVIRONMENT}"
                 }
             }
         }
 
-        stage('Create ECR Repository if Missing') {
-            when {
-                expression { return env.REPO_NAME != '' }
-            }
-            steps {
-                script {
-                    sh """
-                        if ! aws ecr describe-repositories --repository-names ${env.REPO_NAME} --region ${env.AWS_REGION} 2>/dev/null; then
-                            echo "🔧 ECR repository ${env.REPO_NAME} does not exist. Creating..."
-                            aws ecr create-repository --repository-name ${env.REPO_NAME} --region ${env.AWS_REGION}
-                        else
-                            echo "✅ ECR repository ${env.REPO_NAME} already exists."
-                        fi
-                    """
-                }
-            }
-        }
-
-        stage('Build Docker Image') {
-            when {
-                expression { return env.REPO_NAME != '' }
-            }
-            steps {
-                sh "docker build -t ${env.REPO_NAME}:${env.IMAGE_TAG} ."
-            }
-        }
-
-        stage('Login to ECR') {
-            when {
-                expression { return env.REPO_NAME != '' }
-            }
+        stage('Deploy to ECR') {
             steps {
                 sh """
-                    aws ecr get-login-password --region ${env.AWS_REGION} | \
-                    docker login --username AWS --password-stdin ${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com
-                """
-            }
-        }
-
-        stage('Tag & Push to ECR') {
-            when {
-                expression { return env.REPO_NAME != '' }
-            }
-            steps {
-                sh """
-                    docker tag ${env.REPO_NAME}:${env.IMAGE_TAG} ${env.ECR_URI}:${env.BRANCH_NAME}
-                    docker push ${env.ECR_URI}:${env.BRANCH_NAME}
+                chmod +x ./deploy-to-ecr.sh
+                ./deploy-to-ecr.sh ${params.AWS_REGION} ${VERSION} ${ENVIRONMENT}
                 """
             }
         }

@@ -3,33 +3,44 @@
 # Retrieve AWS Account ID dynamically
 ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
 
-# Set the AWS region (You can pass this as an argument or use a default)
-REGION=${1:-us-east-1}  # Default to us-east-1 if no region is provided
+# Set the AWS region (default to us-east-1 if not provided)
+REGION=${1:-us-east-1}
 
-# Set the repository name
-REPOSITORY_NAME="capstone-al-angular"
+# Set the image version (default to v1)
+VERSION=${2:-v1}
+
+# Set the environment (e.g., test or prod), default to "test"
+ENVIRONMENT=${3:-test}
+
+# Set the full ECR repository name with environment suffix
+REPOSITORY_NAME="capstone-al-angular-${ENVIRONMENT}"
+
+echo "📦 Targeting repository: $REPOSITORY_NAME in $REGION (env: $ENVIRONMENT)"
 
 # Check if the repository exists
-REPO_EXISTS=$(aws ecr describe-repositories --repository-names $REPOSITORY_NAME --region $REGION --query 'repositories[0].repositoryName' --output text)
+REPO_EXISTS=$(aws ecr describe-repositories \
+  --repository-names "$REPOSITORY_NAME" \
+  --region "$REGION" \
+  --query 'repositories[0].repositoryName' \
+  --output text 2>/dev/null)
 
 if [ "$REPO_EXISTS" == "$REPOSITORY_NAME" ]; then
-    echo "Repository $REPOSITORY_NAME already exists in ECR."
+    echo "✅ Repository $REPOSITORY_NAME already exists in ECR."
 else
-    echo "Repository $REPOSITORY_NAME does not exist. Creating it now..."
-    aws ecr create-repository --repository-name $REPOSITORY_NAME --region $REGION
-    echo "Repository $REPOSITORY_NAME created successfully."
+    echo "➕ Repository $REPOSITORY_NAME does not exist. Creating it now..."
+    aws ecr create-repository --repository-name "$REPOSITORY_NAME" --region "$REGION"
+    echo "✅ Repository $REPOSITORY_NAME created successfully."
 fi
 
 # Log in to Amazon ECR
-docker login -u AWS -p $(aws ecr get-login-password --region $REGION) $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPOSITORY_NAME
+aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com"
 
-VERSION=${2:-v1}  # Default to 'v1' if no version is provided
+# Build and tag the Docker image
+docker build -t "$REPOSITORY_NAME" .
 
-docker build -t $REPOSITORY_NAME .
+docker tag "$REPOSITORY_NAME:latest" "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPOSITORY_NAME:latest"
+docker tag "$REPOSITORY_NAME:latest" "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPOSITORY_NAME:$VERSION"
 
-docker tag $REPOSITORY_NAME:latest $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPOSITORY_NAME:latest
-docker tag $REPOSITORY_NAME:latest $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPOSITORY_NAME:$VERSION
-
-# Push the Docker image to ECR (both latest and version tags)
-docker push $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPOSITORY_NAME:latest
-docker push $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPOSITORY_NAME:$VERSION
+# Push to ECR
+docker push "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPOSITORY_NAME:latest"
+docker push "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPOSITORY_NAME:$VERSION"
