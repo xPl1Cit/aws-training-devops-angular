@@ -72,7 +72,7 @@ pipeline {
 
                         chmod +x ./deploy-to-ecr.sh
                         ./deploy-to-ecr.sh ${AWS_REGION} ${VERSION} ${ENVIRONMENT}
-						docker system prune
+						docker system prune -f
                     '''
                 }
             }
