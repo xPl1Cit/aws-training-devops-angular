@@ -15,7 +15,7 @@ pipeline {
     }
 
     stages {
-        stage('Install AWS CLI and Docker') {
+        stage('Install Prerequisites') {
             steps {
                 sh '''
                     # Update and install necessary packages
@@ -55,7 +55,7 @@ pipeline {
             }
         }
 
-        stage('Deploy to ECR') {
+        stage('Build Docker and deploy to ECR') {
             steps {
                 withCredentials([
                     usernamePassword(
@@ -73,6 +73,20 @@ pipeline {
                         chmod +x ./deploy-to-ecr.sh
                         ./deploy-to-ecr.sh ${AWS_REGION} ${VERSION} ${ENVIRONMENT}
                     '''
+                }
+            }
+        }
+		
+        stage('Trigger Deployment') {
+            steps {
+                script {
+                    build job: 'Deploy Angular',
+                          parameters: [
+                              string(name: 'REGION', value: ${AWS_REGION}),
+                              string(name: 'VERSION', value: ${VERSION}),
+							  string(name: 'ENVIRONMENT', value: ${ENVIRONMENT})
+                          ],
+                          wait: false
                 }
             }
         }
