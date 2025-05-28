@@ -79,17 +79,17 @@ pipeline {
         }
 		
         stage('Trigger Deployment') {
-            steps {
-                script {
-                    build job: 'Deploy Angular',
-                          parameters: [
-                              string(name: 'REGION', value: ${AWS_REGION}),
-                              string(name: 'VERSION', value: ${VERSION}),
-							  string(name: 'ENVIRONMENT', value: ${ENVIRONMENT})
-                          ],
-                          wait: false
-                }
-            }
-        }
+			steps {
+				script {
+					build job: 'Deploy Angular',
+						  parameters: [
+							  string(name: 'REGION', value: "${AWS_REGION}"),
+							  string(name: 'VERSION', value: "${VERSION}"),
+							  string(name: 'ENVIRONMENT', value: "${ENVIRONMENT}")
+						  ],
+						  wait: false
+				}
+			}
+		}
     }
 }
